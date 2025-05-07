@@ -1,103 +1,141 @@
-import Image from "next/image";
+'use client';
 
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
+import { BackgroundBeamsWithCollision } from '@/components/ui/background-beams-with-collision';
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [formData, setFormData] = useState({
+    name: '',
+    genre: '',
+    artists: '',
+    album: '',
+    popularity: '',
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<null | {
+    prediction: number;
+    confidence_level: number;
+  }>(null);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const res = await fetch('http://127.0.0.1:5000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          genre: formData.genre,
+          artists: formData.artists,
+          album: formData.album,
+          popularity: Number(formData.popularity),
+        }),
+      });
+
+      const data = await res.json();
+      setResult(data);
+    } catch (error) {
+      alert('Prediction failed. Is the API running?');
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div className="dark bg-black min-h-screen">
+      <BackgroundBeamsWithCollision className='min-h-screen'>
+      <main className="min-h-screen bg-gradient-to-br text-white flex items-center justify-center px-4 py-16">
+        <Card className="w-full max-w-2xl border border-zinc-800 bg-zinc-900/80 backdrop-blur-md rounded-3xl shadow-2xl">
+          <CardContent className="p-8 space-y-10">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center space-y-2"
+            >
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                🎵 Spotify Explicit Predictor
+              </h1>
+              <p className="text-sm text-zinc-400">
+                Predict if a track contains explicit content.
+              </p>
+            </motion.div>
+
+            <div className="grid gap-6">
+              {['name', 'genre', 'artists', 'album', 'popularity'].map((field, i) => (
+                <motion.div
+                  key={field}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="space-y-1"
+                >
+                  <Label htmlFor={field} className="text-sm text-zinc-300">
+                    {field.charAt(0).toUpperCase() + field.slice(1)}
+                  </Label>
+                  <Input
+                    id={field}
+                    name={field}
+                    value={formData[field as keyof typeof formData]}
+                    onChange={handleChange}
+                    type={field === 'popularity' ? 'number' : 'text'}
+                    placeholder={`Enter ${field}`}
+                    className="bg-zinc-800 border border-zinc-700 focus:ring-2 focus:ring-green-500/70 transition duration-200 rounded-lg px-4 py-2"
+                  />
+                </motion.div>
+              ))}
+            </div>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full  bg-green-600 hover:bg-green-700 transition-all duration-300 text-white font-semibold py-2 rounded-xl flex items-center justify-center gap-2"
+            >
+              {loading && <Loader2 className="animate-spin h-5 w-5" />}
+              {loading ? 'Predicting...' : 'Predict'}
+            </Button>
+
+            <AnimatePresence>
+              {result && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="mt-6 bg-zinc-800/70 p-6 rounded-xl border border-zinc-700 space-y-2 text-center"
+                >
+                  <p className="text-lg font-semibold">
+                    This Spotify track{' '}
+                    <span
+                      className={`${
+                        result.prediction === 1 ? 'text-red-400' : 'text-green-400'
+                      }`}
+                    >
+                      {result.prediction === 1 ? 'likely contains explicit content 🔞' : 'does not contain explicit content ✅'}
+                    </span>
+                  </p>
+                  <p className="text-sm text-zinc-400">
+                    Confidence Level: {(result.confidence_level * 100).toFixed(2)}%
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+          </CardContent>
+        </Card>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </BackgroundBeamsWithCollision>
     </div>
   );
 }
